@@ -1,211 +1,322 @@
 package main
 
 import (
-	"bufio"
+	"encoding/json"
 	"fmt"
-	"os"
+	"net/http"
+	"strconv"
 	"strings"
 
+	"Autonomo_1/internal/database"
+	"Autonomo_1/internal/modelos"
 	"Autonomo_1/internal/servicios"
-	"Autonomo_1/internal/utilidad"
 )
 
-func main() {
-
-	var opcion int
-
-	for {
-
-		utilidad.MostrarTitulo()
-
-		fmt.Println("===== MENÚ PRINCIPAL =====")
-		fmt.Println("1 -> Agregar producto")
-		fmt.Println("2 -> Listar productos")
-		fmt.Println("3 -> Registrar usuario")
-		fmt.Println("5 -> Crear pedido")
-		fmt.Println("6 -> Listar pedidos")
-		fmt.Println("0 -> Salir")
-
-		fmt.Print("\nSeleccione una opción: ")
-		fmt.Scan(&opcion)
-
-		switch opcion {
-
-		case 1:
-
-			fmt.Println("\n=== AGREGAR PRODUCTO ===")
-
-			var precio float64
-			var stock int
-
-			fmt.Scanln()
-
-			reader := bufio.NewReader(os.Stdin)
-
-			fmt.Print("Nombre del producto: ")
-			nombre, _ := reader.ReadString('\n')
-			nombre = strings.TrimSpace(nombre)
-
-			fmt.Print("Precio: ")
-			fmt.Scan(&precio)
-
-			fmt.Print("Stock: ")
-			fmt.Scan(&stock)
-
-			servicios.AgregarProducto(nombre, precio, stock)
-
-			fmt.Println("\nProducto agregado correctamente.")
-
-		case 2:
-
-			fmt.Println("\n=== LISTA DE PRODUCTOS ===")
-
-			productos := servicios.ListarProductos()
-
-			if len(productos) == 0 {
-
-				fmt.Println("No existen productos registrados.")
-
-			} else {
-
-				fmt.Println("--------------------------------------------------------------------------")
-				fmt.Printf("%-5s %-40s %-12s %-10s\n", "ID", "NOMBRE", "PRECIO", "STOCK")
-				fmt.Println("--------------------------------------------------------------------------")
-
-				for _, producto := range productos {
-
-					fmt.Printf(
-						"%-5d %-40s %-12.2f %-10d\n",
-						producto.ID,
-						producto.Nombre,
-						producto.Precio,
-						producto.Stock,
-					)
-				}
-
-				fmt.Println("--------------------------------------------------------------------------")
-			}
-
-		case 3:
-
-			fmt.Println("\n=== REGISTRAR USUARIO ===")
-
-			fmt.Scanln()
-
-			reader := bufio.NewReader(os.Stdin)
-
-			fmt.Print("Nombre: ")
-			nombre, _ := reader.ReadString('\n')
-			nombre = strings.TrimSpace(nombre)
-
-			fmt.Print("Correo: ")
-			correo, _ := reader.ReadString('\n')
-			correo = strings.TrimSpace(correo)
-
-			servicios.RegistrarUsuario(nombre, correo)
-
-			fmt.Println("\nUsuario registrado correctamente.")
-
-		case 4:
-
-			fmt.Println("\n=== LISTA DE USUARIOS ===")
-
-			usuarios := servicios.ListarUsuarios()
-
-			if len(usuarios) == 0 {
-
-				fmt.Println("No existen usuarios registrados.")
-
-			} else {
-
-				fmt.Println("----------------------------------------------------------------------------")
-				fmt.Printf("%-5s %-35s %-35s\n", "ID", "NOMBRE", "CORREO")
-				fmt.Println("----------------------------------------------------------------------------")
-
-				for _, usuario := range usuarios {
-
-					fmt.Printf(
-						"%-5d %-35s %-35s\n",
-						usuario.ID,
-						usuario.Nombre,
-						usuario.Correo,
-					)
-				}
-
-				fmt.Println("----------------------------------------------------------------------------")
-			}
-
-		case 5:
-
-			fmt.Println("\n=== CREAR PEDIDO ===")
-
-			var usuarioID int
-			var productoID int
-			var cantidad int
-
-			fmt.Print("ID Usuario: ")
-			fmt.Scan(&usuarioID)
-
-			fmt.Print("ID Producto: ")
-			fmt.Scan(&productoID)
-
-			fmt.Print("Cantidad: ")
-			fmt.Scan(&cantidad)
-
-			servicios.CrearPedido(usuarioID, productoID, cantidad)
-
-			fmt.Println("\nPedido creado correctamente.")
-
-		case 6:
-
-			fmt.Println("\n=== LISTA DE PEDIDOS ===")
-
-			pedidos := servicios.ListarPedidos()
-
-			if len(pedidos) == 0 {
-
-				fmt.Println("No existen pedidos registrados.")
-
-			} else {
-
-				fmt.Println("----------------------------------------------------------------")
-				fmt.Printf("%-5s %-10s %-10s %-10s %-10s\n",
-					"ID",
-					"USUARIO",
-					"PRODUCTO",
-					"CANTIDAD",
-					"TOTAL",
-				)
-
-				fmt.Println("----------------------------------------------------------------")
-
-				for _, pedido := range pedidos {
-
-					fmt.Printf(
-						"%-5d %-10d %-10d %-10d %-10.2f\n",
-						pedido.ID,
-						pedido.UsuarioID,
-						pedido.ProductoID,
-						pedido.Cantidad,
-						pedido.Total,
-					)
-				}
-
-				fmt.Println("----------------------------------------------------------------")
-			}
-
-		case 0:
-
-			fmt.Println("\nGracias por utilizar el sistema.")
+// ── HELPERS ──────────────────────────────────────────────────────
+
+func cors(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+}
+
+func jsonOK(w http.ResponseWriter, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(data)
+}
+
+func jsonErr(w http.ResponseWriter, status int, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]string{"error": msg})
+}
+
+// Extrae el ID del path: /api/productos/5  →  5
+func idDesdeURL(r *http.Request, base string) (int, error) {
+	parte := strings.TrimPrefix(r.URL.Path, base)
+	parte  = strings.Trim(parte, "/")
+	return strconv.Atoi(parte)
+}
+
+// ── PRODUCTOS ────────────────────────────────────────────────────
+// GET  /api/productos        → listar        (endpoint 1)
+// POST /api/productos        → agregar       (endpoint 2)
+// PUT  /api/productos/{id}   → actualizar    (endpoint 9)
+// DELETE /api/productos/{id} → eliminar      (endpoint 7)
+
+func handlerProductos(w http.ResponseWriter, r *http.Request) {
+	cors(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	tieneID := strings.TrimPrefix(r.URL.Path, "/api/productos") != ""
+
+	if tieneID {
+		id, err := idDesdeURL(r, "/api/productos/")
+		if err != nil {
+			jsonErr(w, 400, "ID inválido")
 			return
-
-		default:
-
-			fmt.Println("\nOpción inválida.")
 		}
 
-		fmt.Println("\nPresione ENTER para continuar...")
-		fmt.Scanln()
-		fmt.Scanln()
+		switch r.Method {
+
+		// Endpoint 9: PUT /api/productos/{id}
+		case http.MethodPut:
+			var body struct {
+				Precio float64 `json:"precio"`
+				Stock  int     `json:"stock"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				jsonErr(w, 400, "JSON inválido")
+				return
+			}
+			if err := servicios.ActualizarProducto(id, body.Precio, body.Stock); err != nil {
+				jsonErr(w, 500, err.Error())
+				return
+			}
+			jsonOK(w, map[string]string{"mensaje": "Producto actualizado"})
+
+		// Endpoint 7: DELETE /api/productos/{id}
+		case http.MethodDelete:
+			if err := servicios.EliminarProducto(id); err != nil {
+				jsonErr(w, 500, err.Error())
+				return
+			}
+			jsonOK(w, map[string]string{"mensaje": "Producto eliminado"})
+
+		default:
+			jsonErr(w, 405, "Método no permitido")
+		}
+		return
+	}
+
+	switch r.Method {
+
+	// Endpoint 1: GET /api/productos
+	case http.MethodGet:
+		productos, err := servicios.ListarProductos()
+		if err != nil {
+			jsonErr(w, 500, err.Error())
+			return
+		}
+		if productos == nil {
+			productos = []modelos.Producto{}
+		}
+		jsonOK(w, productos)
+
+	// Endpoint 2: POST /api/productos
+	case http.MethodPost:
+		var body struct {
+			Nombre string  `json:"nombre"`
+			Precio float64 `json:"precio"`
+			Stock  int     `json:"stock"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			jsonErr(w, 400, "JSON inválido")
+			return
+		}
+		if strings.TrimSpace(body.Nombre) == "" {
+			jsonErr(w, 400, "El nombre es obligatorio")
+			return
+		}
+		if err := servicios.AgregarProducto(body.Nombre, body.Precio, body.Stock); err != nil {
+			jsonErr(w, 500, err.Error())
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		jsonOK(w, map[string]string{"mensaje": "Producto agregado"})
+
+	default:
+		jsonErr(w, 405, "Método no permitido")
+	}
+}
+
+// ── USUARIOS ─────────────────────────────────────────────────────
+// GET  /api/usuarios → listar    (endpoint 3)
+// POST /api/usuarios → registrar (endpoint 4)
+
+func handlerUsuarios(w http.ResponseWriter, r *http.Request) {
+	cors(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	switch r.Method {
+
+	// Endpoint 3: GET /api/usuarios
+	case http.MethodGet:
+		usuarios, err := servicios.ListarUsuarios()
+		if err != nil {
+			jsonErr(w, 500, err.Error())
+			return
+		}
+		if usuarios == nil {
+			usuarios = []modelos.Usuario{}
+		}
+		jsonOK(w, usuarios)
+
+	// Endpoint 4: POST /api/usuarios
+	case http.MethodPost:
+		var body struct {
+			Nombre string `json:"nombre"`
+			Correo string `json:"correo"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			jsonErr(w, 400, "JSON inválido")
+			return
+		}
+		if strings.TrimSpace(body.Nombre) == "" || strings.TrimSpace(body.Correo) == "" {
+			jsonErr(w, 400, "Nombre y correo son obligatorios")
+			return
+		}
+		if err := servicios.RegistrarUsuario(body.Nombre, body.Correo); err != nil {
+			jsonErr(w, 500, err.Error())
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		jsonOK(w, map[string]string{"mensaje": "Usuario registrado"})
+
+	default:
+		jsonErr(w, 405, "Método no permitido")
+	}
+}
+
+// ── PEDIDOS ──────────────────────────────────────────────────────
+// GET  /api/pedidos       → listar   (endpoint 5)
+// POST /api/pedidos       → crear    (endpoint 6)
+// GET  /api/pedidos/{id}  → detalle  (endpoint 8)
+
+func handlerPedidos(w http.ResponseWriter, r *http.Request) {
+	cors(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	tieneID := strings.TrimPrefix(r.URL.Path, "/api/pedidos") != ""
+
+	if tieneID {
+		id, err := idDesdeURL(r, "/api/pedidos/")
+		if err != nil {
+			jsonErr(w, 400, "ID inválido")
+			return
+		}
+
+		// Endpoint 8: GET /api/pedidos/{id}
+		if r.Method == http.MethodGet {
+			pedido, err := servicios.ObtenerPedido(id)
+			if err != nil {
+				jsonErr(w, 404, "Pedido no encontrado")
+				return
+			}
+			jsonOK(w, pedido)
+			return
+		}
+
+		jsonErr(w, 405, "Método no permitido")
+		return
+	}
+
+	switch r.Method {
+
+	// Endpoint 5: GET /api/pedidos
+	case http.MethodGet:
+		pedidos, err := servicios.ListarPedidos()
+		if err != nil {
+			jsonErr(w, 500, err.Error())
+			return
+		}
+		if pedidos == nil {
+			pedidos = []modelos.Pedido{}
+		}
+		jsonOK(w, pedidos)
+
+	// Endpoint 6: POST /api/pedidos
+	case http.MethodPost:
+		var body struct {
+			UsuarioID int                     `json:"usuario_id"`
+			Items     []servicios.ItemEntrada `json:"items"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			jsonErr(w, 400, "JSON inválido")
+			return
+		}
+		if body.UsuarioID <= 0 {
+			jsonErr(w, 400, "ID de usuario inválido")
+			return
+		}
+		if len(body.Items) == 0 {
+			jsonErr(w, 400, "Debe agregar al menos un producto")
+			return
+		}
+		if err := servicios.CrearPedido(body.UsuarioID, body.Items); err != nil {
+			jsonErr(w, 500, err.Error())
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		jsonOK(w, map[string]string{"mensaje": "Pedido creado"})
+
+	default:
+		jsonErr(w, 405, "Método no permitido")
+	}
+}
+
+// ── REPORTES ─────────────────────────────────────────────────────
+// Endpoint 10: GET /api/reportes/ventas
+
+func handlerReportes(w http.ResponseWriter, r *http.Request) {
+	cors(w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+	if r.Method != http.MethodGet {
+		jsonErr(w, 405, "Método no permitido")
+		return
+	}
+
+	reporte, err := servicios.ReporteVentas()
+	if err != nil {
+		jsonErr(w, 500, err.Error())
+		return
+	}
+	if reporte == nil {
+		reporte = []modelos.ReporteVenta{}
+	}
+	jsonOK(w, reporte)
+}
+
+// ── MAIN ─────────────────────────────────────────────────────────
+
+func main() {
+	database.Inicializar()
+
+	http.HandleFunc("/api/productos/", handlerProductos)
+	http.HandleFunc("/api/productos",  handlerProductos)
+	http.HandleFunc("/api/usuarios",   handlerUsuarios)
+	http.HandleFunc("/api/pedidos/",   handlerPedidos)
+	http.HandleFunc("/api/pedidos",    handlerPedidos)
+	http.HandleFunc("/api/reportes/ventas", handlerReportes)
+	http.Handle("/", http.FileServer(http.Dir("./web")))
+
+	fmt.Println("========================")
+	fmt.Println("  SISTEMA E-COMMERCE")
+	fmt.Println("========================")
+	fmt.Println("Base de datos : ecommerce.db")
+	fmt.Println("Servidor en   : http://localhost:8080")
+	fmt.Println("")
+	fmt.Println("Endpoints disponibles:")
+	fmt.Println("  1. GET    /api/productos")
+	fmt.Println("  2. POST   /api/productos")
+	fmt.Println("  3. GET    /api/usuarios")
+	fmt.Println("  4. POST   /api/usuarios")
+	fmt.Println("  5. GET    /api/pedidos")
+	fmt.Println("  6. POST   /api/pedidos")
+	fmt.Println("  7. DELETE /api/productos/{id}")
+	fmt.Println("  8. GET    /api/pedidos/{id}")
+	fmt.Println("  9. PUT    /api/productos/{id}")
+	fmt.Println(" 10. GET    /api/reportes/ventas")
+
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		fmt.Println("Error:", err)
 	}
 }

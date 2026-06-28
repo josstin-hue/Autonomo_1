@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>E-Commerce | Sistema de Gestión</title>
+  <style>
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --border: #2a2e3f;
+      --accent: #6c63ff; --accent2: #00d4aa; --danger: #ff4d6d;
+      --warn: #f59e0b; --text: #e8eaf0; --muted: #7b7f96; --radius: 10px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 18px 32px; display: flex; align-items: center; gap: 14px; }
+    .logo { width: 38px; height: 38px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; color: #fff; }
+    header h1 { font-size: 1.2rem; font-weight: 700; }
+    header span { font-size: .8rem; color: var(--muted); }
+
+    nav { display: flex; gap: 4px; padding: 20px 32px 0; border-bottom: 1px solid var(--border); }
+    .tab-btn { padding: 10px 22px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--muted); font-size: .9rem; font-weight: 600; cursor: pointer; transition: all .2s; border-radius: var(--radius) var(--radius) 0 0; }
+    .tab-btn:hover { color: var(--text); background: var(--border); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(108,99,255,.08); }
+
+    main { padding: 32px; max-width: 1060px; margin: 0 auto; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .section-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
+    .section-title::before { content: ''; display: block; width: 4px; height: 24px; background: linear-gradient(180deg, var(--accent), var(--accent2)); border-radius: 2px; }
+
+    .layout { display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: start; }
+    @media(max-width:720px) { .layout { grid-template-columns: 1fr; } }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+    .card h3 { font-size: .78rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 18px; }
+
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: .82rem; color: var(--muted); margin-bottom: 6px; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 10px 12px; background: var(--bg);
+      border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); font-size: .9rem; outline: none;
+      transition: border-color .2s; appearance: none;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+    .form-group select option { background: var(--surface); }
+
+    .btn { width: 100%; padding: 11px; border: none; border-radius: 7px; font-size: .9rem; font-weight: 700; cursor: pointer; transition: opacity .2s, transform .1s; margin-top: 4px; }
+    .btn:active { transform: scale(.98); }
+    .btn-primary  { background: linear-gradient(135deg, var(--accent), #8b5cf6); color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-secondary { background: var(--border); color: var(--text); margin-top: 8px; }
+    .btn-secondary:hover { background: #3a3e52; }
+    .btn-warn   { background: rgba(245,158,11,.15); color: var(--warn); border: 1px solid rgba(245,158,11,.3); padding: 5px 10px; font-size: .78rem; border-radius: 5px; width: auto; margin: 0; }
+    .btn-danger { background: rgba(255,77,109,.15); color: var(--danger); border: 1px solid rgba(255,77,109,.3); padding: 5px 10px; font-size: .78rem; border-radius: 5px; width: auto; margin: 0; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    thead tr { background: var(--border); text-transform: uppercase; letter-spacing: .6px; font-size: .75rem; color: var(--muted); }
+    th, td { padding: 11px 14px; text-align: left; vertical-align: middle; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+    tbody tr:hover { background: rgba(255,255,255,.03); }
+    .acciones { display: flex; gap: 6px; }
+
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .75rem; font-weight: 700; }
+    .badge-green  { background: rgba(0,212,170,.15); color: var(--accent2); }
+    .badge-purple { background: rgba(108,99,255,.18); color: var(--accent); }
+    .badge-warn   { background: rgba(245,158,11,.15); color: var(--warn); }
+
+    .empty { text-align: center; color: var(--muted); padding: 40px 0; font-size: .9rem; }
+
+    #toast { position: fixed; bottom: 28px; right: 28px; padding: 12px 20px; border-radius: 8px; font-size: .88rem; font-weight: 600; color: #fff; opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 9999; }
+    #toast.show { opacity: 1; }
+    #toast.ok  { background: #16a34a; }
+    #toast.err { background: var(--danger); }
+
+    /* Modal editar producto */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 999; opacity: 0; pointer-events: none; transition: opacity .2s; }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; width: 340px; }
+    .modal h2 { font-size: 1rem; margin-bottom: 20px; }
+    .modal-footer { display: flex; gap: 10px; margin-top: 16px; }
+    .modal-footer .btn { margin: 0; }
+
+    /* Items pedido */
+    .items-lista { margin: 12px 0; display: flex; flex-direction: column; gap: 8px; }
+    .item-fila { display: grid; grid-template-columns: 1fr 80px auto; gap: 8px; align-items: center; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; }
+    .item-fila span { font-size: .85rem; }
+    .item-fila input { padding: 6px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-size: .85rem; outline: none; width: 100%; }
+    .item-fila input:focus { border-color: var(--accent); }
+
+    .total-preview { margin-top: 12px; padding: 10px 14px; background: rgba(108,99,255,.1); border: 1px solid rgba(108,99,255,.25); border-radius: 7px; font-size: .9rem; display: flex; justify-content: space-between; align-items: center; }
+    .total-preview strong { color: var(--accent2); font-size: 1.1rem; }
+
+    /* Detalle pedido */
+    .detalle-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-top: 16px; }
+    .detalle-box h4 { font-size: .78rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+    .detalle-item { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: .87rem; }
+    .detalle-item:last-child { border: none; }
+
+    /* Reporte */
+    .reporte-bar-wrap { margin-top: 4px; }
+    .reporte-bar { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); min-width: 4px; }
+
+    .items-detalle { font-size: .78rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">E</div>
+  <div>
+    <h1>E-Commerce</h1>
+    <span>Sistema de Gestión — 10 endpoints</span>
+  </div>
+</header>
+
+<nav>
+  <button class="tab-btn active" onclick="cambiarTab('productos',this)">📦 Productos</button>
+  <button class="tab-btn" onclick="cambiarTab('usuarios',this)">👤 Usuarios</button>
+  <button class="tab-btn" onclick="cambiarTab('pedidos',this)">🛒 Pedidos</button>
+  <button class="tab-btn" onclick="cambiarTab('reportes',this)">📊 Reportes</button>
+</nav>
+
+<main>
+
+  <!-- ══ PRODUCTOS ══ -->
+  <section id="tab-productos" class="section active">
+    <div class="section-title">Productos</div>
+    <div class="layout">
+      <div class="card">
+        <h3>Agregar producto</h3>
+        <div class="form-group"><label>Nombre</label><input id="prod-nombre" type="text" placeholder="Ej: Cable UTP Cat6"/></div>
+        <div class="form-group"><label>Precio ($)</label><input id="prod-precio" type="number" min="0" step="0.01" placeholder="0.00"/></div>
+        <div class="form-group"><label>Stock</label><input id="prod-stock" type="number" min="0" placeholder="0"/></div>
+        <button class="btn btn-primary" onclick="agregarProducto()">Guardar producto</button>
+      </div>
+      <div class="card">
+        <h3>Lista de productos</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Nombre</th><th>Precio</th><th>Stock</th><th>Acciones</th></tr></thead>
+            <tbody id="tabla-productos"><tr><td colspan="5" class="empty">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ USUARIOS ══ -->
+  <section id="tab-usuarios" class="section">
+    <div class="section-title">Usuarios</div>
+    <div class="layout">
+      <div class="card">
+        <h3>Registrar usuario</h3>
+        <div class="form-group"><label>Nombre completo</label><input id="usu-nombre" type="text" placeholder="Ej: Juan Pérez"/></div>
+        <div class="form-group"><label>Correo electrónico</label><input id="usu-correo" type="email" placeholder="correo@ejemplo.com"/></div>
+        <button class="btn btn-primary" onclick="registrarUsuario()">Registrar usuario</button>
+      </div>
+      <div class="card">
+        <h3>Lista de usuarios</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Nombre</th><th>Correo</th></tr></thead>
+            <tbody id="tabla-usuarios"><tr><td colspan="3" class="empty">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ PEDIDOS ══ -->
+  <section id="tab-pedidos" class="section">
+    <div class="section-title">Pedidos</div>
+    <div class="layout">
+      <div class="card">
+        <h3>Crear pedido</h3>
+        <div class="form-group">
+          <label>Cliente</label>
+          <select id="ped-usuario"><option value="">— Selecciona un usuario —</option></select>
+        </div>
+        <div class="form-group">
+          <label>Producto</label>
+          <select id="ped-producto-select"><option value="">— Selecciona un producto —</option></select>
+        </div>
+        <div class="form-group">
+          <label>Cantidad</label>
+          <input id="ped-cantidad-input" type="number" min="1" value="1"/>
+        </div>
+        <button class="btn btn-secondary" onclick="agregarItemPedido()">＋ Añadir producto</button>
+        <div class="items-lista" id="items-lista"></div>
+        <div class="total-preview" id="total-preview" style="display:none">
+          <span>Total estimado:</span>
+          <strong id="total-valor">$0.00</strong>
+        </div>
+        <button class="btn btn-primary" style="margin-top:14px" onclick="crearPedido()">Confirmar pedido</button>
+      </div>
+
+      <div>
+        <div class="card">
+          <h3>Lista de pedidos</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Cliente</th><th>Productos</th><th>Total</th><th>Ver</th></tr></thead>
+              <tbody id="tabla-pedidos"><tr><td colspan="5" class="empty">Cargando…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="detalle-box" id="detalle-pedido" style="display:none">
+          <h4>Detalle del pedido</h4>
+          <div id="detalle-contenido"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ REPORTES ══ -->
+  <section id="tab-reportes" class="section">
+    <div class="section-title">Reporte de Ventas</div>
+    <div class="card">
+      <h3>Ventas por producto</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Producto</th><th>Unidades vendidas</th><th>Total recaudado</th><th>Participación</th></tr></thead>
+          <tbody id="tabla-reportes"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Modal editar producto -->
+<div class="modal-overlay" id="modal-editar">
+  <div class="modal">
+    <h2>✏️ Editar producto <span id="modal-prod-nombre" style="color:var(--accent)"></span></h2>
+    <input type="hidden" id="modal-prod-id"/>
+    <div class="form-group"><label>Nuevo precio ($)</label><input id="modal-precio" type="number" min="0" step="0.01"/></div>
+    <div class="form-group"><label>Nuevo stock</label><input id="modal-stock" type="number" min="0"/></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarEdicion()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  POO — CLASES DE DOMINIO
+// ═══════════════════════════════════════════════════
+
+class Producto {
+  constructor({ ID, Nombre, Precio, Stock }) {
+    this.id = ID; this.nombre = Nombre; this.precio = Precio; this.stock = Stock;
+  }
+  precioFmt() { return `$${this.precio.toFixed(2)}`; }
+  toTablaHTML() {
+    return `<tr>
+      <td><span class="badge badge-purple">${this.id}</span></td>
+      <td>${this.nombre}</td>
+      <td>${this.precioFmt()}</td>
+      <td><span class="badge badge-green">${this.stock}</span></td>
+      <td><div class="acciones">
+        <button class="btn btn-warn" onclick="abrirModal(${this.id},'${this.nombre.replace(/'/g,"\\'")}',${this.precio},${this.stock})">✏️ Editar</button>
+        <button class="btn btn-danger" onclick="eliminarProducto(${this.id})">🗑 Eliminar</button>
+      </div></td>
+    </tr>`;
+  }
+  toOpcion() {
+    return `<option value="${this.id}" data-precio="${this.precio}">${this.nombre} — ${this.precioFmt()}</option>`;
+  }
+}
+
+class Usuario {
+  constructor({ ID, Nombre, Correo }) {
+    this.id = ID; this.nombre = Nombre; this.correo = Correo;
+  }
+  toTablaHTML() {
+    return `<tr>
+      <td><span class="badge badge-purple">${this.id}</span></td>
+      <td>${this.nombre}</td>
+      <td>${this.correo}</td>
+    </tr>`;
+  }
+  toOpcion() {
+    return `<option value="${this.id}">#${this.id} — ${this.nombre}</option>`;
+  }
+}
+
+class ItemPedido {
+  constructor(productoID, nombreProducto, precio, cantidad) {
+    this.productoID = productoID; this.nombre = nombreProducto;
+    this.precio = precio; this.cantidad = cantidad;
+  }
+  get subtotal() { return this.precio * this.cantidad; }
+  subtotalFmt()  { return `$${this.subtotal.toFixed(2)}`; }
+  toHTML(idx) {
+    return `<div class="item-fila">
+      <span>${this.nombre}</span>
+      <input type="number" min="1" value="${this.cantidad}" onchange="actualizarCantidad(${idx},this.value)"/>
+      <button class="btn btn-danger" onclick="eliminarItem(${idx})">✕</button>
+    </div>`;
+  }
+}
+
+class Pedido {
+  constructor({ ID, UsuarioID, NombreUsuario, Items, Total }) {
+    this.id = ID; this.usuarioID = UsuarioID;
+    this.nombreUsuario = NombreUsuario || `Usuario #${UsuarioID}`;
+    this.items = Items || []; this.total = Total;
+  }
+  totalFmt() { return `$${this.total.toFixed(2)}`; }
+  itemsResumen() {
+    if (!this.items || !this.items.length) return '—';
+    return this.items.map(i => `${i.nombre_producto || 'Prod.'+i.producto_id} ×${i.cantidad}`).join(', ');
+  }
+  toTablaHTML() {
+    return `<tr>
+      <td><span class="badge badge-purple">${this.id}</span></td>
+      <td>${this.nombreUsuario}</td>
+      <td class="items-detalle">${this.itemsResumen()}</td>
+      <td><strong>${this.totalFmt()}</strong></td>
+      <td><button class="btn btn-warn" style="white-space:nowrap" onclick="verDetallePedido(${this.id})">🔍 Ver</button></td>
+    </tr>`;
+  }
+}
+
+class ReporteVenta {
+  constructor({ producto_id, nombre_producto, unidades_vendidas, total_recaudado }) {
+    this.productoID       = producto_id;
+    this.nombre           = nombre_producto;
+    this.unidades         = unidades_vendidas;
+    this.total            = total_recaudado;
+  }
+  totalFmt() { return `$${this.total.toFixed(2)}`; }
+  toTablaHTML(maxTotal) {
+    const pct = maxTotal > 0 ? Math.round((this.total / maxTotal) * 100) : 0;
+    return `<tr>
+      <td>${this.nombre}</td>
+      <td><span class="badge badge-green">${this.unidades}</span></td>
+      <td><strong>${this.totalFmt()}</strong></td>
+      <td style="min-width:120px">
+        <div class="reporte-bar-wrap">
+          <div class="reporte-bar" style="width:${pct}%"></div>
+        </div>
+        <span style="font-size:.75rem;color:var(--muted)">${pct}%</span>
+      </td>
+    </tr>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  ESTADO
+// ═══════════════════════════════════════════════════
+
+let itemsActuales     = [];
+let catalogoProductos = [];
+
+// ═══════════════════════════════════════════════════
+//  API
+// ═══════════════════════════════════════════════════
+
+const BASE = 'http://localhost:8080/api';
+
+async function api(metodo, ruta, datos) {
+  const opts = { method: metodo, headers: { 'Content-Type': 'application/json' } };
+  if (datos) opts.body = JSON.stringify(datos);
+  const res  = await fetch(BASE + ruta, opts);
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || 'Error desconocido');
+  return body;
+}
+
+const get    = ruta       => api('GET',    ruta);
+const post   = (ruta, d)  => api('POST',   ruta, d);
+const put    = (ruta, d)  => api('PUT',    ruta, d);
+const del    = ruta       => api('DELETE', ruta);
+
+// ═══════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════
+
+function toast(msg, tipo = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = `show ${tipo}`;
+  setTimeout(() => el.className = '', 2800);
+}
+function vacio(cols, msg = 'Sin registros') {
+  return `<tr><td colspan="${cols}" class="empty">${msg}</td></tr>`;
+}
+function val(id)      { return document.getElementById(id).value.trim(); }
+function clear(...ids) { ids.forEach(id => document.getElementById(id).value = ''); }
+function cambiarTab(nombre, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + nombre).classList.add('active');
+  btn.classList.add('active');
+  if (nombre === 'reportes') cargarReportes();
+}
+
+// ═══════════════════════════════════════════════════
+//  PRODUCTOS
+// ═══════════════════════════════════════════════════
+
+async function cargarProductos() {
+  try {
+    const datos = await get('/productos');
+    catalogoProductos = (datos || []).map(d => new Producto(d));
+    document.getElementById('tabla-productos').innerHTML = catalogoProductos.length
+      ? catalogoProductos.map(p => p.toTablaHTML()).join('')
+      : vacio(5);
+    const sel = document.getElementById('ped-producto-select');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">— Selecciona un producto —</option>' +
+      catalogoProductos.map(p => p.toOpcion()).join('');
+    if (prev) sel.value = prev;
+  } catch {
+    document.getElementById('tabla-productos').innerHTML = vacio(5, '⚠️ Sin conexión al servidor');
+  }
+}
+
+async function agregarProducto() {
+  const nombre = val('prod-nombre');
+  const precio = parseFloat(val('prod-precio'));
+  const stock  = parseInt(val('prod-stock'));
+  if (!nombre)                     return toast('El nombre es obligatorio', 'err');
+  if (isNaN(precio) || precio < 0) return toast('Precio inválido', 'err');
+  if (isNaN(stock)  || stock  < 0) return toast('Stock inválido', 'err');
+  try {
+    await post('/productos', { nombre, precio, stock });
+    toast('✅ Producto agregado');
+    clear('prod-nombre','prod-precio','prod-stock');
+    cargarProductos();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+async function eliminarProducto(id) {
+  if (!confirm('¿Eliminar este producto?')) return;
+  try {
+    await del(`/productos/${id}`);
+    toast('🗑 Producto eliminado');
+    cargarProductos();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+// ── Modal editar ──
+function abrirModal(id, nombre, precio, stock) {
+  document.getElementById('modal-prod-id').value    = id;
+  document.getElementById('modal-prod-nombre').textContent = nombre;
+  document.getElementById('modal-precio').value     = precio;
+  document.getElementById('modal-stock').value      = stock;
+  document.getElementById('modal-editar').classList.add('open');
+}
+function cerrarModal() {
+  document.getElementById('modal-editar').classList.remove('open');
+}
+async function guardarEdicion() {
+  const id     = parseInt(document.getElementById('modal-prod-id').value);
+  const precio = parseFloat(document.getElementById('modal-precio').value);
+  const stock  = parseInt(document.getElementById('modal-stock').value);
+  if (isNaN(precio) || precio < 0) return toast('Precio inválido', 'err');
+  if (isNaN(stock)  || stock  < 0) return toast('Stock inválido', 'err');
+  try {
+    await put(`/productos/${id}`, { precio, stock });
+    toast('✅ Producto actualizado');
+    cerrarModal();
+    cargarProductos();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+document.getElementById('modal-editar').addEventListener('click', e => {
+  if (e.target === e.currentTarget) cerrarModal();
+});
+
+// ═══════════════════════════════════════════════════
+//  USUARIOS
+// ═══════════════════════════════════════════════════
+
+async function cargarUsuarios() {
+  try {
+    const datos = await get('/usuarios');
+    const usuarios = (datos || []).map(d => new Usuario(d));
+    document.getElementById('tabla-usuarios').innerHTML = usuarios.length
+      ? usuarios.map(u => u.toTablaHTML()).join('')
+      : vacio(3);
+    const sel = document.getElementById('ped-usuario');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">— Selecciona un usuario —</option>' +
+      usuarios.map(u => u.toOpcion()).join('');
+    if (prev) sel.value = prev;
+  } catch {
+    document.getElementById('tabla-usuarios').innerHTML = vacio(3, '⚠️ Sin conexión al servidor');
+  }
+}
+
+async function registrarUsuario() {
+  const nombre = val('usu-nombre');
+  const correo = val('usu-correo');
+  if (!nombre)                         return toast('El nombre es obligatorio', 'err');
+  if (!correo || !correo.includes('@')) return toast('Correo inválido', 'err');
+  try {
+    await post('/usuarios', { nombre, correo });
+    toast('✅ Usuario registrado');
+    clear('usu-nombre','usu-correo');
+    cargarUsuarios();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+// ═══════════════════════════════════════════════════
+//  PEDIDOS — ITEMS
+// ═══════════════════════════════════════════════════
+
+function agregarItemPedido() {
+  const sel      = document.getElementById('ped-producto-select');
+  const prodID   = parseInt(sel.value);
+  const cantidad = parseInt(val('ped-cantidad-input')) || 1;
+  if (!prodID) return toast('Selecciona un producto', 'err');
+  const producto = catalogoProductos.find(p => p.id === prodID);
+  if (!producto)  return toast('Producto no encontrado', 'err');
+  const existente = itemsActuales.find(i => i.productoID === prodID);
+  if (existente) { existente.cantidad += cantidad; }
+  else { itemsActuales.push(new ItemPedido(prodID, producto.nombre, producto.precio, cantidad)); }
+  document.getElementById('ped-cantidad-input').value = 1;
+  sel.value = '';
+  renderItems();
+}
+
+function actualizarCantidad(idx, v) {
+  const c = parseInt(v);
+  if (c > 0) itemsActuales[idx].cantidad = c;
+  renderItems();
+}
+function eliminarItem(idx) { itemsActuales.splice(idx, 1); renderItems(); }
+
+function renderItems() {
+  const lista   = document.getElementById('items-lista');
+  const preview = document.getElementById('total-preview');
+  if (!itemsActuales.length) { lista.innerHTML = ''; preview.style.display = 'none'; return; }
+  lista.innerHTML = itemsActuales.map((it, i) => it.toHTML(i)).join('');
+  const total = itemsActuales.reduce((s, i) => s + i.subtotal, 0);
+  document.getElementById('total-valor').textContent = `$${total.toFixed(2)}`;
+  preview.style.display = 'flex';
+}
+
+async function crearPedido() {
+  const usuarioID = parseInt(document.getElementById('ped-usuario').value);
+  if (!usuarioID)              return toast('Selecciona un usuario', 'err');
+  if (!itemsActuales.length)   return toast('Agrega al menos un producto', 'err');
+  try {
+    await post('/pedidos', {
+      usuario_id: usuarioID,
+      items: itemsActuales.map(i => ({ producto_id: i.productoID, cantidad: i.cantidad }))
+    });
+    toast('✅ Pedido creado');
+    itemsActuales = [];
+    renderItems();
+    document.getElementById('ped-usuario').value = '';
+    cargarPedidos();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+// ═══════════════════════════════════════════════════
+//  PEDIDOS — LISTA Y DETALLE
+// ═══════════════════════════════════════════════════
+
+async function cargarPedidos() {
+  try {
+    const datos  = await get('/pedidos');
+    const pedidos = (datos || []).map(d => new Pedido(d));
+    document.getElementById('tabla-pedidos').innerHTML = pedidos.length
+      ? pedidos.map(p => p.toTablaHTML()).join('')
+      : vacio(5);
+  } catch {
+    document.getElementById('tabla-pedidos').innerHTML = vacio(5, '⚠️ Sin conexión al servidor');
+  }
+}
+
+async function verDetallePedido(id) {
+  const box = document.getElementById('detalle-pedido');
+  const con = document.getElementById('detalle-contenido');
+  con.innerHTML = '<p style="color:var(--muted);font-size:.85rem">Cargando…</p>';
+  box.style.display = 'block';
+  try {
+    const p = await get(`/pedidos/${id}`);
+    const items = (p.Items || []).map(i => `
+      <div class="detalle-item">
+        <span>${i.nombre_producto} × ${i.cantidad}</span>
+        <span>$${i.subtotal.toFixed(2)}</span>
+      </div>`).join('');
+    con.innerHTML = `
+      <div class="detalle-item"><span>Pedido #${p.ID}</span><span class="badge badge-purple">${p.NombreUsuario}</span></div>
+      ${items}
+      <div class="detalle-item" style="margin-top:8px;font-weight:700">
+        <span>Total</span><span style="color:var(--accent2)">$${p.Total.toFixed(2)}</span>
+      </div>`;
+  } catch { con.innerHTML = '<p style="color:var(--danger)">No se pudo cargar el detalle.</p>'; }
+}
+
+// ═══════════════════════════════════════════════════
+//  REPORTES
+// ═══════════════════════════════════════════════════
+
+async function cargarReportes() {
+  try {
+    const datos = await get('/reportes/ventas');
+    const ventas = (datos || []).map(d => new ReporteVenta(d));
+    const maxTotal = ventas.reduce((m, v) => Math.max(m, v.total), 0);
+    document.getElementById('tabla-reportes').innerHTML = ventas.length
+      ? ventas.map(v => v.toTablaHTML(maxTotal)).join('')
+      : vacio(4, 'Aún no hay ventas registradas');
+  } catch {
+    document.getElementById('tabla-reportes').innerHTML = vacio(4, '⚠️ Sin conexión al servidor');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  INICIO
+// ═══════════════════════════════════════════════════
+cargarProductos();
+cargarUsuarios();
+cargarPedidos();
+</script>
+</body>
+</html>
